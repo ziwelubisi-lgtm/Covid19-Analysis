@@ -1,0 +1,182 @@
+select * from `workspace`.`default`.`covid_deaths` limit 100;
+
+--- Total Deaths, Total Cases and Death Percentage 
+--- Insight: What was the likelihood of dying after contracting COVID in each country?
+
+SELECT
+    location,
+    date,
+    total_cases,
+    total_deaths,
+    (total_deaths / total_cases) * 100 AS DeathPercentage
+FROM workspace.default.covid_deaths
+WHERE total_cases > 0;
+
+--- Percentage Infected per Location 
+--- Insight: Which countries had the highest infection rates?
+SELECT
+    location,
+    population,
+    MAX(total_cases) AS HighestInfectionCount,
+    MAX((total_cases/population)*100) AS PercentPopulationInfected
+FROM workspace.default.covid_deaths
+GROUP BY location, population
+ORDER BY PercentPopulationInfected DESC;
+
+--- Countries with Highest Death Counts
+--- Insight: Which countries experienced the greatest loss of life?
+
+SELECT
+        location,
+        MAX(total_deaths) AS TotalDeathRate
+FROM workspace.default.covid_deaths 
+WHERE continent IS NOT NULL
+GROUP BY location
+ORDER BY TotalDeathRate DESC;
+
+--- Top 5 countries by Death Rate 
+SELECT
+        location,
+        MAX(total_deaths) AS TotalDeathRate
+FROM workspace.default.covid_deaths 
+WHERE continent IS NOT NULL
+GROUP BY location
+ORDER BY TotalDeathRate DESC
+LIMIT 5;
+
+--- Deaths per million
+--- Insight: Provides a fairer comparison between large and small countries.
+
+SELECT
+    location,
+    MAX(total_deaths_per_million) AS DeathsPerMillion
+FROM workspace.default.covid_deaths 
+WHERE continent IS NOT NULL
+GROUP BY location
+ORDER BY DeathsPerMillion DESC;
+
+--- Deaths by Continent 
+--- Insight: Which continent was hardest hit?
+SELECT 
+    continent, 
+MAX(total_deaths) AS DeathsByContinent
+FROM workspace.default.covid_deaths 
+WHERE continent IS NOT NULL
+GROUP BY continent
+ORDER BY DeathsByContinent
+DESC;
+
+--- Global cases and deaths by date 
+--- Waves of infections globally 
+SELECT
+    date,
+    SUM(new_cases) AS TotalCases,
+    SUM(new_deaths) AS TotalDeaths,
+    TRY_DIVIDE(SUM(new_deaths), SUM(new_cases)) * 100 AS DeathPercentage
+FROM workspace.default.covid_deaths 
+WHERE continent IS NOT NULL
+GROUP BY date
+ORDER BY date;
+
+--- Overall global numbers 
+--- Total cases all over the world 
+SELECT
+    SUM(new_cases) AS TotalCases,
+    SUM(new_deaths) AS TotalDeaths,
+    TRY_DIVIDE(SUM(new_deaths), SUM(new_cases))*100 AS DeathPercentage
+FROM workspace.default.covid_deaths
+WHERE continent IS NOT NULL;
+
+--- Percentage of people vaccinated 
+SELECT
+    dea.location,
+    dea.population,
+    MAX(vac.people_vaccinated) AS PeopleVaccinated,
+    MAX(vac.people_vaccinated / dea.population * 100) AS VaccinatedPercentage
+FROM workspace.default.covid_deaths dea
+JOIN workspace.default.covid_vaccinations vac
+    ON dea.location = vac.location
+    AND dea.date = vac.date
+WHERE dea.continent IS NOT NULL
+GROUP BY
+    dea.location,
+    dea.population
+ORDER BY VaccinatedPercentage DESC;
+
+--- Total vaccinations per country 
+SELECT
+    dea.location,
+    MAX(vac.total_vaccinations) AS TotalVaccinations
+FROM workspace.default.covid_deaths dea
+JOIN workspace.default.covid_vaccinations vac
+    ON dea.location = vac.location
+    AND dea.date = vac.date
+WHERE dea.continent IS NOT NULL
+GROUP BY dea.location
+ORDER BY TotalVaccinations DESC;
+
+--- Fully vaccinated population percentage 
+SELECT
+    dea.location,
+    MAX(vac.people_fully_vaccinated) AS FullyVaccinated,
+    MAX(vac.people_fully_vaccinated / dea.population * 100) AS FullyVaccinatedPercent
+FROM workspace.default.covid_deaths dea
+JOIN workspace.default.covid_vaccinations vac
+    ON dea.location = vac.location
+    AND dea.date = vac.date
+WHERE dea.continent IS NOT NULL
+GROUP BY
+    dea.location,
+    dea.population
+ORDER BY FullyVaccinatedPercent DESC;
+
+--- South Africa Vaccinations Progression 
+SELECT
+    dea.date,
+    vac.people_vaccinated
+FROM workspace.default.covid_deaths dea
+JOIN workspace.default.covid_vaccinations vac
+    ON dea.location = vac.location
+    AND dea.date = vac.date
+WHERE dea.location = 'South Africa'
+ORDER BY dea.date;
+
+--- Cases vs Vaccinations 
+SELECT
+    dea.location,
+    dea.date,
+    dea.total_cases,
+    vac.people_vaccinated, 
+    TRY_DIVIDE(people_vaccinated, total_cases) * 100 AS VaccinationRateVsCases
+FROM workspace.default.covid_deaths dea
+JOIN workspace.default.covid_vaccinations vac
+    ON dea.location = vac.location
+    AND dea.date = vac.date
+WHERE dea.location = 'South Africa'
+ORDER BY dea.date;
+
+--- Top 10 Countries that Vaccinate
+SELECT
+    dea.location,
+    MAX(vac.people_vaccinated) AS VaccinatedPeople
+FROM workspace.default.covid_deaths dea
+JOIN workspace.default.covid_vaccinations vac
+    ON dea.location = vac.location
+    AND dea.date = vac.date
+WHERE dea.continent IS NOT NULL
+GROUP BY dea.location
+ORDER BY VaccinatedPeople DESC
+LIMIT 10;
+
+--- Vaccinations vs Death 
+SELECT
+    dea.location,
+    MAX(vac.people_vaccinated) AS VaccinatedPeople,
+    MAX(dea.total_deaths) AS TotalDeaths
+FROM workspace.default.covid_deaths dea
+JOIN workspace.default.covid_vaccinations vac
+    ON dea.location = vac.location
+    AND dea.date = vac.date
+WHERE dea.continent IS NOT NULL
+GROUP BY dea.location
+ORDER BY VaccinatedPeople DESC;
